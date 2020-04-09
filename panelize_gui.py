@@ -28,34 +28,34 @@ class PanelizePluginDialog(wx.Dialog):
         item_grid.Add(file_group, 1, wx.EXPAND)
 
         # Create the numerical options
-        item_grid.Add(wx.StaticText(panel, label='Boards X'), 1, wx.ALIGN_CENTRE_VERTICAL)
+        item_grid.Add(wx.StaticText(panel, label='Boards horizontal', size=wx.Size(120, -1)), 1, wx.ALIGN_CENTRE_VERTICAL)
         self.boards_x = wx.SpinCtrl(panel, style=wx.SP_ARROW_KEYS, min=1, value='1')
         item_grid.Add(self.boards_x, 1, wx.EXPAND)
 
-        item_grid.Add(wx.StaticText(panel, label='Boards Y'), 1, wx.ALIGN_CENTRE_VERTICAL)
+        item_grid.Add(wx.StaticText(panel, label='Boards vertical'), 1, wx.ALIGN_CENTRE_VERTICAL)
         self.boards_y = wx.SpinCtrl(panel, style=wx.SP_ARROW_KEYS, min=1, value='1')
         item_grid.Add(self.boards_y, 1, wx.EXPAND)
 
-        item_grid.Add(wx.StaticText(panel, label='Tabs horizontal', size=wx.Size(100, -1)), 1, wx.ALIGN_CENTRE_VERTICAL)
-        self.tabs_y = wx.SpinCtrl(panel, style=wx.SP_ARROW_KEYS)
+        item_grid.Add(wx.StaticText(panel, label='Tabs horizontal', size=wx.Size(120, -1)), 1, wx.ALIGN_CENTRE_VERTICAL)
+        self.tabs_y = wx.SpinCtrl(panel, style=wx.SP_ARROW_KEYS, value='1')
         item_grid.Add(self.tabs_y, 1, wx.EXPAND)
 
         item_grid.Add(wx.StaticText(panel, label='Tabs vertical'), 1, wx.ALIGN_CENTRE_VERTICAL)
-        self.tabs_x = wx.SpinCtrl(panel, style=wx.SP_ARROW_KEYS)
+        self.tabs_x = wx.SpinCtrl(panel, style=wx.SP_ARROW_KEYS, value='1')
         item_grid.Add(self.tabs_x, 1, wx.EXPAND)
 
-        item_grid.Add(wx.StaticText(panel, label='Frame width'), 1, wx.ALIGN_CENTRE_VERTICAL)
+        item_grid.Add(wx.StaticText(panel, label='Frame width (mm)'), 1, wx.ALIGN_CENTRE_VERTICAL)
         self.outline_width = wx.SpinCtrlDouble(panel, style=wx.SP_ARROW_KEYS, min=0.1, inc=0.1, value='5.0')
         self.outline_width.SetDigits(1)
         item_grid.Add(self.outline_width, 1, wx.EXPAND)
 
-        item_grid.Add(wx.StaticText(panel, label='Board spacing'), 1, wx.ALIGN_CENTRE_VERTICAL)
+        item_grid.Add(wx.StaticText(panel, label='Board spacing (mm)'), 1, wx.ALIGN_CENTRE_VERTICAL)
         self.spacing_width = wx.SpinCtrlDouble(panel, style=wx.SP_ARROW_KEYS, min=0.1, inc=0.1, value='2.0')
         self.spacing_width.SetDigits(1)
         item_grid.Add(self.spacing_width, 1, wx.EXPAND)
 
-        item_grid.Add(wx.StaticText(panel, label='Tab width'), 1, wx.ALIGN_CENTRE_VERTICAL)
-        self.tab_width = wx.SpinCtrlDouble(panel, style=wx.SP_ARROW_KEYS, min=0.1, inc=0.1, value='2.0')
+        item_grid.Add(wx.StaticText(panel, label='Tab width (mm)'), 1, wx.ALIGN_CENTRE_VERTICAL)
+        self.tab_width = wx.SpinCtrlDouble(panel, style=wx.SP_ARROW_KEYS, min=0.1, inc=0.1, value='2.5')
         self.tab_width.SetDigits(1)
         item_grid.Add(self.tab_width, 1, wx.EXPAND)
 

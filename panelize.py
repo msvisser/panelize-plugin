@@ -5,11 +5,11 @@ class PanelSettings:
         self.board_file = board_file
         self.outline_width = FromMM(5)
         self.spacing_width = FromMM(2)
-        self.tab_width = FromMM(2)
+        self.tab_width = FromMM(2.5)
         self.boards_x = 1
         self.boards_y = 1
-        self.tabs_x = 0
-        self.tabs_y = 0
+        self.tabs_x = 1
+        self.tabs_y = 1
 
 class Panel:
     def __init__(self):
