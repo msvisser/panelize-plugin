@@ -1,22 +1,23 @@
 from pcbnew import *
 
 class PanelSettings:
-    def __init__(self):
+    def __init__(self, board_file):
+        self.board_file = board_file
         self.outline_width = FromMM(5)
         self.spacing_width = FromMM(2)
         self.tab_width = FromMM(2)
-        self.boards_x = 2
-        self.boards_y = 3
-        self.tabs_x = 3
-        self.tabs_y = 2
+        self.boards_x = 1
+        self.boards_y = 1
+        self.tabs_x = 0
+        self.tabs_y = 0
 
 class Panel:
     def __init__(self):
         self.board = GetBoard()
 
-    def create_panel(self, board_file, settings):
+    def create_panel(self, settings):
         # Load the board to be panelized
-        other_board = LoadBoard(board_file)
+        other_board = LoadBoard(settings.board_file)
 
         # Get the thickness of the outline
         box = other_board.GetBoardEdgesBoundingBox()

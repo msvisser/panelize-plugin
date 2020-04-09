@@ -1,11 +1,8 @@
 import pcbnew
 import os
+import wx
 from .panelize import Panel, PanelSettings
-
-# BOARD_FILE = "/Users/michiel/Kicad/fan-adapter/fan-adapter.kicad_pcb"
-# BOARD_FILE = "/Users/michiel/Kicad/multi-serial/multi-serial.kicad_pcb"
-BOARD_FILE = "/Users/michiel/Kicad/icebreaker-pmod/hyperram/v1.0b/ibp-hyperram.kicad_pcb"
-# BOARD_FILE = "/Users/michiel/Kicad/icebreaker/hardware/v1.0e/icebreaker.kicad_pcb"
+from .panelize_gui import PanelizePluginDialog
 
 class PanelizePlugin(pcbnew.ActionPlugin):
     def defaults(self):
@@ -16,10 +13,34 @@ class PanelizePlugin(pcbnew.ActionPlugin):
         self.icon_file_name = os.path.join(os.path.dirname(__file__), 'panelize_plugin.png')
 
     def Run(self):
+        # Check if the current board is empty
+        if not pcbnew.GetBoard().IsEmpty():
+            dlg = wx.MessageDialog(None,
+                'A panel cannot be created when the board is non-empty. Delete everything, or create a new empty board.',
+                'Cannot create panel',
+                wx.OK
+            )
+            dlg.ShowModal()
+            dlg.Destroy()
+            return
+
+        # Ask the user for the board and settings
+        panelize_dialog = PanelizePluginDialog()
+        ok = panelize_dialog.ShowModal()
+        if not ok:
+            panelize_dialog.Destroy()
+            return
+        settings = panelize_dialog.GetSettings()
+        panelize_dialog.Destroy()
+
         # Load the board to be panelized
-        settings = PanelSettings()
-        settings.boards_x = 3
-        settings.boards_y = 2
-        settings.tabs_x = 1
-        settings.tabs_y = 2
-        Panel().create_panel(BOARD_FILE, settings)
+        try:
+            Panel().create_panel(settings)
+        except IOError:
+            dlg = wx.MessageDialog(None,
+                'The board that was selected could not be opened.',
+                'Cannot open board',
+                wx.OK
+            )
+            dlg.ShowModal()
+            dlg.Destroy()
