@@ -54,6 +54,7 @@ class Panel:
                 board_y = settings.outline_width + settings.spacing_width + (settings.spacing_width + board_h) * y
                 self.AppendBoard(other_board, board_x, board_y, outline_thickness)
 
+        hole_size = wxSize(FromMM(0.5), FromMM(0.5))
         # Add the tabs for each of the boards
         for y in range(settings.boards_y+1):
             for x in range(settings.boards_x+1):
@@ -80,6 +81,13 @@ class Panel:
                                     self.BreakOutline(drawing, hit_rect, 0)
                                     break
 
+                        # Add the holes slightly inset
+                        for hole_offset in [FromMM(0.1), settings.spacing_width - FromMM(0.1)]:
+                            self.AddHole(lx,             ly + hole_offset, hole_size)
+                            for i in range(1, int(settings.tab_width / FromMM(2))+1):
+                                self.AddHole(lx - FromMM(i), ly + hole_offset, hole_size)
+                                self.AddHole(lx + FromMM(i), ly + hole_offset, hole_size)
+
                         # Add in the connecting lines
                         self.AddBoardOutline(hit_rect.GetLeft(), ly, hit_rect.GetLeft(), ly + settings.spacing_width, outline_thickness)
                         self.AddBoardOutline(hit_rect.GetRight(), ly, hit_rect.GetRight(), ly + settings.spacing_width, outline_thickness)
@@ -101,6 +109,13 @@ class Panel:
                                 if type(drawing) == DRAWSEGMENT and drawing.GetLayer() == 44 and drawing.HitTest(hit_rect, False, 10):
                                     self.BreakOutline(drawing, hit_rect, 1)
                                     break
+
+                        # Add the holes slightly inset
+                        for hole_offset in [FromMM(0.1), settings.spacing_width - FromMM(0.1)]:
+                            self.AddHole(lx + hole_offset, ly, hole_size)
+                            for i in range(1, int(settings.tab_width / FromMM(2))+1):
+                                self.AddHole(lx + hole_offset, ly - FromMM(i), hole_size)
+                                self.AddHole(lx + hole_offset, ly + FromMM(i), hole_size)
 
                         # Add in the connecting lines
                         self.AddBoardOutline(lx, hit_rect.GetTop(), lx + settings.spacing_width, hit_rect.GetTop(), outline_thickness)
@@ -136,6 +151,21 @@ class Panel:
         # Add two lines to replace the deleted line with a split
         self.AddBoardOutline(start_x, start_y, rect.GetLeft(), rect.GetTop(), outline_thickness)
         self.AddBoardOutline(rect.GetRight(), rect.GetBottom(), end_x, end_y, outline_thickness)
+
+    def AddHole(self, x, y, size):
+        # Create a new footprint
+        module = MODULE(self.board)
+        self.board.Add(module)
+        # Create a new pad
+        pad = D_PAD(module)
+        module.Add(pad)
+        # Set the size of the pad
+        pad.SetSize(size)
+        pad.SetDrillSize(size)
+        # Set the pad to non-plated through hole
+        pad.SetAttribute(PAD_ATTRIB_HOLE_NOT_PLATED)
+        # Move the pad to the requested position
+        module.SetPosition(wxPoint(x, y))
 
     def AppendBoard(self, other_board, board_x, board_y, outline_thickness):
         # Determine the bounding box of the board
