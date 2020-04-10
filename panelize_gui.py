@@ -59,6 +59,10 @@ class PanelizePluginDialog(wx.Dialog):
         self.tab_width.SetDigits(1)
         item_grid.Add(self.tab_width, 1, wx.EXPAND)
 
+        item_grid.Add(wx.StaticText(panel, label='Trim silkscreen'), 1, wx.ALIGN_CENTRE_VERTICAL)
+        self.trim_silkscreen = wx.CheckBox(panel)
+        item_grid.Add(self.trim_silkscreen, 1, wx.EXPAND)
+
         # Create two buttons
         button_box = wx.BoxSizer(wx.HORIZONTAL)
         btn_cancel = wx.Button(panel, label='Cancel')
@@ -97,4 +101,5 @@ class PanelizePluginDialog(wx.Dialog):
         settings.outline_width = pcbnew.FromMM(self.outline_width.GetValue())
         settings.spacing_width = pcbnew.FromMM(self.spacing_width.GetValue())
         settings.tab_width = pcbnew.FromMM(self.tab_width.GetValue())
+        settings.trim_silkscreen = self.trim_silkscreen.IsChecked()
         return settings

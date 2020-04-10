@@ -10,6 +10,7 @@ class PanelSettings:
         self.boards_y = 1
         self.tabs_x = 1
         self.tabs_y = 1
+        self.trim_silkscreen = False
 
 class Panel:
     def __init__(self, settings):
@@ -186,9 +187,19 @@ class Panel:
         for module in other_board.GetModules():
             module_dup = BOARD_ITEM.Duplicate(module)
             self.board.Add(module_dup)
+
+            # Go through all graphical items and possibly remove silkscreen
+            for drawing in module_dup.GraphicalItems():
+                if self.TrimSilkscreenTest(drawing, box):
+                    module_dup.Delete(drawing)
+
             module_dup.Move(offset_point)
         # Duplicate all graphical items
         for drawing in other_board.GetDrawings():
+            # Possibly skip silkscreen drawing if trimmed
+            if self.TrimSilkscreenTest(drawing, box):
+                continue
+
             drawing_dup = drawing.Duplicate()
             self.board.Add(drawing_dup)
             drawing_dup.Move(offset_point)
@@ -206,3 +217,8 @@ class Panel:
         self.board.BuildListOfNets()
         self.board.SynchronizeNetsAndNetClasses()
         self.board.BuildConnectivity()
+
+    def TrimSilkscreenTest(self, drawing, hitbox):
+        return (self.settings.trim_silkscreen and
+                (drawing.GetLayerName() == "F.SilkS" or drawing.GetLayerName() == "B.SilkS") and
+                not drawing.HitTest(hitbox, True, 0))
