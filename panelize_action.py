@@ -35,7 +35,7 @@ class PanelizePlugin(pcbnew.ActionPlugin):
 
         # Load the board to be panelized
         try:
-            Panel().create_panel(settings)
+            Panel(settings).create_panel()
         except IOError:
             dlg = wx.MessageDialog(None,
                 'The board that was selected could not be opened.',

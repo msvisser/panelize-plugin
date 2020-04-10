@@ -12,12 +12,13 @@ class PanelSettings:
         self.tabs_y = 1
 
 class Panel:
-    def __init__(self):
+    def __init__(self, settings):
         self.board = GetBoard()
+        self.settings = settings
 
-    def create_panel(self, settings):
+    def create_panel(self):
         # Load the board to be panelized
-        other_board = LoadBoard(settings.board_file)
+        other_board = LoadBoard(self.settings.board_file)
 
         # Get the thickness of the outline
         box = other_board.GetBoardEdgesBoundingBox()
@@ -35,45 +36,45 @@ class Panel:
             self.board.SetCopperLayerCount(other_copper)
 
         # Add outline
-        needed_width = 2 * settings.outline_width + settings.spacing_width + (settings.spacing_width + board_w) * settings.boards_x
-        needed_height = 2 * settings.outline_width + settings.spacing_width + (settings.spacing_width + board_h) * settings.boards_y
+        needed_width = 2 * self.settings.outline_width + self.settings.spacing_width + (self.settings.spacing_width + board_w) * self.settings.boards_x
+        needed_height = 2 * self.settings.outline_width + self.settings.spacing_width + (self.settings.spacing_width + board_h) * self.settings.boards_y
 
         self.AddBoardOutlineSquare(0, 0, needed_width, needed_height, outline_thickness)
         self.AddBoardOutlineSquare(
-            settings.outline_width,
-            settings.outline_width,
-            needed_width - 2*settings.outline_width,
-            needed_height - 2*settings.outline_width,
+            self.settings.outline_width,
+            self.settings.outline_width,
+            needed_width - 2*self.settings.outline_width,
+            needed_height - 2*self.settings.outline_width,
             outline_thickness
         )
 
         # Add boards
-        for y in range(settings.boards_y):
-            for x in range(settings.boards_x):
-                board_x = settings.outline_width + settings.spacing_width + (settings.spacing_width + board_w) * x
-                board_y = settings.outline_width + settings.spacing_width + (settings.spacing_width + board_h) * y
+        for y in range(self.settings.boards_y):
+            for x in range(self.settings.boards_x):
+                board_x = self.settings.outline_width + self.settings.spacing_width + (self.settings.spacing_width + board_w) * x
+                board_y = self.settings.outline_width + self.settings.spacing_width + (self.settings.spacing_width + board_h) * y
                 self.AppendBoard(other_board, board_x, board_y, outline_thickness)
 
         hole_size = wxSize(FromMM(0.5), FromMM(0.5))
         # Add the tabs for each of the boards
-        for y in range(settings.boards_y+1):
-            for x in range(settings.boards_x+1):
-                board_x = settings.outline_width + settings.spacing_width + (settings.spacing_width + board_w) * x
-                board_y = settings.outline_width + settings.spacing_width + (settings.spacing_width + board_h) * y
-                x_spacing = board_w / (settings.tabs_x + 1)
-                y_spacing = board_h / (settings.tabs_y + 1)
+        for y in range(self.settings.boards_y+1):
+            for x in range(self.settings.boards_x+1):
+                board_x = self.settings.outline_width + self.settings.spacing_width + (self.settings.spacing_width + board_w) * x
+                board_y = self.settings.outline_width + self.settings.spacing_width + (self.settings.spacing_width + board_h) * y
+                x_spacing = board_w / (self.settings.tabs_x + 1)
+                y_spacing = board_h / (self.settings.tabs_y + 1)
 
-                if x != settings.boards_x:
-                    for t in range(settings.tabs_x):
+                if x != self.settings.boards_x:
+                    for t in range(self.settings.tabs_x):
                         # Calculate the position of the tab
                         lx = board_x + (t+1) * x_spacing
-                        ly = board_y - settings.spacing_width
+                        ly = board_y - self.settings.spacing_width
 
                         # Open up both sides of the tab
-                        for offset in [0, settings.spacing_width]:
+                        for offset in [0, self.settings.spacing_width]:
                             hit_rect = EDA_RECT(
-                                wxPoint(lx - settings.tab_width/2, ly + offset),
-                                wxSize(settings.tab_width, 0)
+                                wxPoint(lx - self.settings.tab_width/2, ly + offset),
+                                wxSize(self.settings.tab_width, 0)
                             )
                             # Check all drawing items for outline segments that need to be opened up
                             for drawing in self.board.GetDrawings():
@@ -82,27 +83,27 @@ class Panel:
                                     break
 
                         # Add the holes slightly inset
-                        for hole_offset in [FromMM(0.1), settings.spacing_width - FromMM(0.1)]:
+                        for hole_offset in [FromMM(0.1), self.settings.spacing_width - FromMM(0.1)]:
                             self.AddHole(lx,             ly + hole_offset, hole_size)
-                            for i in range(1, int(settings.tab_width / FromMM(2))+1):
+                            for i in range(1, int(self.settings.tab_width / FromMM(2))+1):
                                 self.AddHole(lx - FromMM(i), ly + hole_offset, hole_size)
                                 self.AddHole(lx + FromMM(i), ly + hole_offset, hole_size)
 
                         # Add in the connecting lines
-                        self.AddBoardOutline(hit_rect.GetLeft(), ly, hit_rect.GetLeft(), ly + settings.spacing_width, outline_thickness)
-                        self.AddBoardOutline(hit_rect.GetRight(), ly, hit_rect.GetRight(), ly + settings.spacing_width, outline_thickness)
+                        self.AddBoardOutline(hit_rect.GetLeft(), ly, hit_rect.GetLeft(), ly + self.settings.spacing_width, outline_thickness)
+                        self.AddBoardOutline(hit_rect.GetRight(), ly, hit_rect.GetRight(), ly + self.settings.spacing_width, outline_thickness)
 
-                if y != settings.boards_y:
-                    for t in range(settings.tabs_y):
+                if y != self.settings.boards_y:
+                    for t in range(self.settings.tabs_y):
                         # Calculate the position of the tab
-                        lx = board_x - settings.spacing_width
+                        lx = board_x - self.settings.spacing_width
                         ly = board_y + (t+1) * y_spacing
 
                         # Open up both sides of the tab
-                        for offset in [0, settings.spacing_width]:
+                        for offset in [0, self.settings.spacing_width]:
                             hit_rect = EDA_RECT(
-                                wxPoint(lx + offset, ly - settings.tab_width/2),
-                                wxSize(0, settings.tab_width)
+                                wxPoint(lx + offset, ly - self.settings.tab_width/2),
+                                wxSize(0, self.settings.tab_width)
                             )
                             # Check all drawing items for outline segments that need to be opened up
                             for drawing in self.board.GetDrawings():
@@ -111,15 +112,15 @@ class Panel:
                                     break
 
                         # Add the holes slightly inset
-                        for hole_offset in [FromMM(0.1), settings.spacing_width - FromMM(0.1)]:
+                        for hole_offset in [FromMM(0.1), self.settings.spacing_width - FromMM(0.1)]:
                             self.AddHole(lx + hole_offset, ly, hole_size)
-                            for i in range(1, int(settings.tab_width / FromMM(2))+1):
+                            for i in range(1, int(self.settings.tab_width / FromMM(2))+1):
                                 self.AddHole(lx + hole_offset, ly - FromMM(i), hole_size)
                                 self.AddHole(lx + hole_offset, ly + FromMM(i), hole_size)
 
                         # Add in the connecting lines
-                        self.AddBoardOutline(lx, hit_rect.GetTop(), lx + settings.spacing_width, hit_rect.GetTop(), outline_thickness)
-                        self.AddBoardOutline(lx, hit_rect.GetBottom(), lx + settings.spacing_width, hit_rect.GetBottom(), outline_thickness)
+                        self.AddBoardOutline(lx, hit_rect.GetTop(), lx + self.settings.spacing_width, hit_rect.GetTop(), outline_thickness)
+                        self.AddBoardOutline(lx, hit_rect.GetBottom(), lx + self.settings.spacing_width, hit_rect.GetBottom(), outline_thickness)
 
     def AddBoardOutline(self, x0, y0, x1, y1, width=FromMM(0.25)):
         line = DRAWSEGMENT(self.board)
