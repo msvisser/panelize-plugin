@@ -1,5 +1,21 @@
 from pcbnew import *
 
+# All types of different DRAWSEGMENT shapes
+STROKE_SEGMENT = 0
+STROKE_RECT = 1
+STROKE_ARC = 2
+STROKE_CIRCLE = 3
+STROKE_POLYGON = 4
+STROKE_CURVE = 5
+STROKE_MAP = {
+    0: 'SEGMENT',
+    1: 'RECT',
+    2: 'ARC',
+    3: 'CIRCLE',
+    4: 'POLYGON',
+    5: 'CURVE',
+}
+
 class PanelSettings:
     def __init__(self, board_file):
         self.board_file = board_file
@@ -79,7 +95,11 @@ class Panel:
                             )
                             # Check all drawing items for outline segments that need to be opened up
                             for drawing in self.board.GetDrawings():
-                                if type(drawing) == DRAWSEGMENT and drawing.GetLayer() == 44 and drawing.HitTest(hit_rect, False, 10):
+                                if (type(drawing) == DRAWSEGMENT and
+                                    drawing.GetShape() == STROKE_SEGMENT and
+                                    drawing.GetLayerName() == "Edge.Cuts" and
+                                    drawing.HitTest(hit_rect, False, 10)
+                                ):
                                     self.BreakOutline(drawing, hit_rect, 0)
                                     break
 
@@ -108,7 +128,11 @@ class Panel:
                             )
                             # Check all drawing items for outline segments that need to be opened up
                             for drawing in self.board.GetDrawings():
-                                if type(drawing) == DRAWSEGMENT and drawing.GetLayer() == 44 and drawing.HitTest(hit_rect, False, 10):
+                                if (type(drawing) == DRAWSEGMENT and
+                                    drawing.GetShape() == STROKE_SEGMENT and
+                                    drawing.GetLayerName() == "Edge.Cuts" and
+                                    drawing.HitTest(hit_rect, False, 10)
+                                ):
                                     self.BreakOutline(drawing, hit_rect, 1)
                                     break
 
