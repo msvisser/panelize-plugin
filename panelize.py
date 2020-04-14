@@ -32,6 +32,7 @@ class Panel:
     def __init__(self, settings):
         self.board = GetBoard()
         self.settings = settings
+        self.page_offset = wxPoint(FromMM(20), FromMM(20))
 
     def create_panel(self):
         # Load the board to be panelized
@@ -146,6 +147,8 @@ class Panel:
                         # Add in the connecting lines
                         self.AddBoardOutline(lx, hit_rect.GetTop(), lx + self.settings.spacing_width, hit_rect.GetTop(), outline_thickness)
                         self.AddBoardOutline(lx, hit_rect.GetBottom(), lx + self.settings.spacing_width, hit_rect.GetBottom(), outline_thickness)
+
+        self.board.Move(self.page_offset)
 
     def AddBoardOutline(self, x0, y0, x1, y1, width=FromMM(0.25)):
         line = DRAWSEGMENT(self.board)
