@@ -49,6 +49,11 @@ class PanelizePluginDialog(wx.Dialog):
         self.outline_width.SetDigits(1)
         item_grid.Add(self.outline_width, 1, wx.EXPAND)
 
+        item_grid.Add(wx.StaticText(panel, label='Frame hole (mm)', size=wx.Size(120, -1)), 1, wx.ALIGN_CENTRE_VERTICAL)
+        self.outline_hole = wx.SpinCtrlDouble(panel, style=wx.SP_ARROW_KEYS, min=0.1, inc=0.1, value='2.5')
+        self.outline_hole.SetDigits(1)
+        item_grid.Add(self.outline_hole, 1, wx.EXPAND)
+
         item_grid.Add(wx.StaticText(panel, label='Board spacing (mm)'), 1, wx.ALIGN_CENTRE_VERTICAL)
         self.spacing_width = wx.SpinCtrlDouble(panel, style=wx.SP_ARROW_KEYS, min=0.1, inc=0.1, value='2.0')
         self.spacing_width.SetDigits(1)
@@ -99,6 +104,7 @@ class PanelizePluginDialog(wx.Dialog):
         settings.tabs_x = self.tabs_x.GetValue()
         settings.tabs_y = self.tabs_y.GetValue()
         settings.outline_width = pcbnew.FromMM(self.outline_width.GetValue())
+        settings.outline_hole = pcbnew.FromMM(self.outline_hole.GetValue())
         settings.spacing_width = pcbnew.FromMM(self.spacing_width.GetValue())
         settings.tab_width = pcbnew.FromMM(self.tab_width.GetValue())
         settings.trim_silkscreen = self.trim_silkscreen.IsChecked()

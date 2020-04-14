@@ -20,6 +20,7 @@ class PanelSettings:
     def __init__(self, board_file):
         self.board_file = board_file
         self.outline_width = FromMM(5)
+        self.outline_hole = FromMM(2.5)
         self.spacing_width = FromMM(2)
         self.tab_width = FromMM(2.5)
         self.boards_x = 1
@@ -65,6 +66,13 @@ class Panel:
             needed_height - 2*self.settings.outline_width,
             outline_thickness
         )
+
+        # Add holes in the frame of the panel
+        outline_w2 = self.settings.outline_width / 2
+        hole_size = wxSize(self.settings.outline_hole, self.settings.outline_hole)
+        self.AddHole(outline_w2, outline_w2, hole_size)
+        self.AddHole(needed_width - outline_w2, outline_w2, hole_size)
+        self.AddHole(outline_w2, needed_height - outline_w2, hole_size)
 
         # Add boards
         for y in range(self.settings.boards_y):
