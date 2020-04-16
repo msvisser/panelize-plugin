@@ -1,20 +1,5 @@
 from pcbnew import *
-
-# All types of different DRAWSEGMENT shapes
-STROKE_SEGMENT = 0
-STROKE_RECT = 1
-STROKE_ARC = 2
-STROKE_CIRCLE = 3
-STROKE_POLYGON = 4
-STROKE_CURVE = 5
-STROKE_MAP = {
-    0: 'SEGMENT',
-    1: 'RECT',
-    2: 'ARC',
-    3: 'CIRCLE',
-    4: 'POLYGON',
-    5: 'CURVE',
-}
+from .constants import Layers, DrawSegmentShape
 
 class PanelSettings:
     def __init__(self, board_file):
@@ -43,7 +28,7 @@ class Panel:
         box = other_board.GetBoardEdgesBoundingBox()
         outline_thickness = 0
         for drawing in other_board.GetDrawings():
-            if type(drawing) == DRAWSEGMENT and drawing.GetLayer() == 44:
+            if type(drawing) == DRAWSEGMENT and drawing.GetLayer() == Layers.Edge_Cuts:
                 outline_thickness = max(outline_thickness, drawing.GetWidth())
         board_w = box.GetWidth() - outline_thickness
         board_h = box.GetHeight() - outline_thickness
@@ -105,8 +90,8 @@ class Panel:
                             # Check all drawing items for outline segments that need to be opened up
                             for drawing in self.board.GetDrawings():
                                 if (type(drawing) == DRAWSEGMENT and
-                                    drawing.GetShape() == STROKE_SEGMENT and
-                                    drawing.GetLayerName() == "Edge.Cuts" and
+                                    drawing.GetShape() == DrawSegmentShape.Segment and
+                                    drawing.GetLayer() == Layers.Edge_Cuts and
                                     drawing.HitTest(hit_rect, False, 10)
                                 ):
                                     self.BreakOutline(drawing, hit_rect, 0)
@@ -138,8 +123,8 @@ class Panel:
                             # Check all drawing items for outline segments that need to be opened up
                             for drawing in self.board.GetDrawings():
                                 if (type(drawing) == DRAWSEGMENT and
-                                    drawing.GetShape() == STROKE_SEGMENT and
-                                    drawing.GetLayerName() == "Edge.Cuts" and
+                                    drawing.GetShape() == DrawSegmentShape.Segment and
+                                    drawing.GetLayer() == Layers.Edge_Cuts and
                                     drawing.HitTest(hit_rect, False, 10)
                                 ):
                                     self.BreakOutline(drawing, hit_rect, 1)
@@ -163,7 +148,7 @@ class Panel:
         line.SetWidth(width)
         line.SetStart(wxPoint(x0, y0))
         line.SetEnd(wxPoint(x1, y1))
-        line.SetLayer(44)
+        line.SetLayer(Layers.Edge_Cuts)
         self.board.Add(line)
 
     def AddBoardOutlineSquare(self, x, y, w, h, width=FromMM(0.25)):
@@ -263,5 +248,5 @@ class Panel:
 
     def TrimSilkscreenTest(self, drawing, hitbox):
         return (self.settings.trim_silkscreen and
-                (drawing.GetLayerName() == "F.SilkS" or drawing.GetLayerName() == "B.SilkS") and
+                (drawing.GetLayer() == Layers.F_SilkS or drawing.GetLayer() == Layers.B_SilkS) and
                 not drawing.HitTest(hitbox, True, 0))
