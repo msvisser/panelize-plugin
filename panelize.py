@@ -114,7 +114,7 @@ class Panel:
 
                         # Add the holes slightly inset
                         for hole_offset in [FromMM(0.1), self.settings.spacing_width - FromMM(0.1)]:
-                            self.AddHole(lx,             ly + hole_offset, hole_size)
+                            self.AddHole(lx, ly + hole_offset, hole_size)
                             for i in range(1, int(self.settings.tab_width / FromMM(2))+1):
                                 self.AddHole(lx - FromMM(i), ly + hole_offset, hole_size)
                                 self.AddHole(lx + FromMM(i), ly + hole_offset, hole_size)
