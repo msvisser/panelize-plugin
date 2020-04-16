@@ -207,11 +207,16 @@ class Panel:
     def AppendBoard(self, other_board, board_x, board_y, outline_thickness):
         # Determine the bounding box of the board
         box = other_board.GetBoardEdgesBoundingBox()
-        # Calculate the origin of the board, add half outline thickness since the bounding box is
-        # determined on the outside of the lines
-        origin_point = wxPoint(box.GetLeft() + outline_thickness/2, box.GetTop() + outline_thickness/2)
+        # Deflate the bounding box by half the outline thickness to account for
+        # the width of the outline
+        box.Inflate(-outline_thickness / 2, -outline_thickness / 2)
+        # Get the origin of the bounding box
+        origin_point = box.GetOrigin()
         # Determine the move offset needed to place the board at the correct position
         offset_point = wxPoint(board_x, board_y) - origin_point
+
+        # Inflate the bounding box again for the silkscreen trim check
+        box.Inflate(self.settings.spacing_width / 2, self.settings.spacing_width / 2)
 
         # Duplicate all the tracks
         for track in other_board.GetTracks():
@@ -224,9 +229,12 @@ class Panel:
             self.board.Add(module_dup)
 
             # Go through all graphical items and possibly remove silkscreen
+            marked_for_deletion = []
             for drawing in module_dup.GraphicalItems():
                 if self.TrimSilkscreenTest(drawing, box):
-                    module_dup.Delete(drawing)
+                    marked_for_deletion.append(drawing)
+            for item in marked_for_deletion:
+                item.DeleteStructure()
 
             module_dup.Move(offset_point)
         # Duplicate all graphical items
