@@ -106,7 +106,10 @@ class PanelizePluginDialog(wx.Dialog):
         self.EndModal(1)
 
     def SelectFile(self, event):
-        dlg = wx.FileDialog(self, "Select Board file", os.path.expanduser("~"), "", "*.kicad_pcb", wx.FD_OPEN)
+        search_path = os.path.expanduser("~")
+        if self.file_name.GetValue() != "":
+            search_path = os.path.dirname(self.file_name.GetValue())
+        dlg = wx.FileDialog(self, "Select Board file", search_path, "", "*.kicad_pcb", wx.FD_OPEN)
         if dlg.ShowModal() == wx.ID_OK:
             self.file_name.SetValue(dlg.GetPath())
         dlg.Destroy()
@@ -126,3 +129,18 @@ class PanelizePluginDialog(wx.Dialog):
         settings.fiducial_mask = pcbnew.FromMM(self.fiducial_mask.GetValue())
         settings.fiducial_copper = pcbnew.FromMM(self.fiducial_copper.GetValue())
         return settings
+
+    def LoadSettings(self, settings):
+        self.file_name.SetValue(settings.board_file)
+        self.boards_x.SetValue(settings.boards_x)
+        self.boards_y.SetValue(settings.boards_y)
+        self.tabs_x.SetValue(settings.tabs_x)
+        self.tabs_y.SetValue(settings.tabs_y)
+        self.outline_width.SetValue(pcbnew.ToMM(settings.outline_width))
+        self.outline_hole.SetValue(pcbnew.ToMM(settings.outline_hole))
+        self.spacing_width.SetValue(pcbnew.ToMM(settings.spacing_width))
+        self.tab_width.SetValue(pcbnew.ToMM(settings.tab_width))
+        self.tab_mode.SetSelection(settings.tab_mode)
+        self.trim_silkscreen.SetValue(settings.trim_silkscreen)
+        self.fiducial_mask.SetValue(pcbnew.ToMM(settings.fiducial_mask))
+        self.fiducial_copper.SetValue(pcbnew.ToMM(settings.fiducial_copper))
