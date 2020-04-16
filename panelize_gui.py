@@ -68,7 +68,7 @@ class PanelizePluginDialog(wx.Dialog):
         self.trim_silkscreen = wx.CheckBox(panel)
         item_grid.Add(self.trim_silkscreen, 1, wx.EXPAND)
 
-        item_grid.Add(wx.StaticText(panel, label='Fiducial mask (mm)'), 1, wx.ALIGN_CENTRE_VERTICAL)
+        item_grid.Add(wx.StaticText(panel, label='Fiducial mask (mm)', size=wx.Size(140, -1)), 1, wx.ALIGN_CENTRE_VERTICAL)
         self.fiducial_mask = wx.SpinCtrlDouble(panel, style=wx.SP_ARROW_KEYS, min=0.1, inc=0.1, value='2.5')
         self.fiducial_mask.SetDigits(1)
         item_grid.Add(self.fiducial_mask, 1, wx.EXPAND)
