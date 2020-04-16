@@ -68,6 +68,16 @@ class PanelizePluginDialog(wx.Dialog):
         self.trim_silkscreen = wx.CheckBox(panel)
         item_grid.Add(self.trim_silkscreen, 1, wx.EXPAND)
 
+        item_grid.Add(wx.StaticText(panel, label='Fiducial mask (mm)'), 1, wx.ALIGN_CENTRE_VERTICAL)
+        self.fiducial_mask = wx.SpinCtrlDouble(panel, style=wx.SP_ARROW_KEYS, min=0.1, inc=0.1, value='2.5')
+        self.fiducial_mask.SetDigits(1)
+        item_grid.Add(self.fiducial_mask, 1, wx.EXPAND)
+
+        item_grid.Add(wx.StaticText(panel, label='Fiducial copper (mm)'), 1, wx.ALIGN_CENTRE_VERTICAL)
+        self.fiducial_copper = wx.SpinCtrlDouble(panel, style=wx.SP_ARROW_KEYS, min=0.1, inc=0.1, value='1.0')
+        self.fiducial_copper.SetDigits(1)
+        item_grid.Add(self.fiducial_copper, 1, wx.EXPAND)
+
         # Create two buttons
         button_box = wx.BoxSizer(wx.HORIZONTAL)
         btn_cancel = wx.Button(panel, label='Cancel')
@@ -108,4 +118,6 @@ class PanelizePluginDialog(wx.Dialog):
         settings.spacing_width = pcbnew.FromMM(self.spacing_width.GetValue())
         settings.tab_width = pcbnew.FromMM(self.tab_width.GetValue())
         settings.trim_silkscreen = self.trim_silkscreen.IsChecked()
+        settings.fiducial_mask = pcbnew.FromMM(self.fiducial_mask.GetValue())
+        settings.fiducial_copper = pcbnew.FromMM(self.fiducial_copper.GetValue())
         return settings

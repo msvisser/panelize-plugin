@@ -13,6 +13,8 @@ class PanelSettings:
         self.tabs_x = 1
         self.tabs_y = 1
         self.trim_silkscreen = False
+        self.fiducial_mask = FromMM(2.5)
+        self.fiducial_copper = FromMM(1)
 
 class Panel:
     def __init__(self, settings):
@@ -52,12 +54,24 @@ class Panel:
             outline_thickness
         )
 
+        # Calculate half the outline width and 1.5 outline width
+        outline_1w2 = self.settings.outline_width / 2
+        outline_3w2 = self.settings.outline_width * 3 / 2
+
         # Add holes in the frame of the panel
-        outline_w2 = self.settings.outline_width / 2
         hole_size = wxSize(self.settings.outline_hole, self.settings.outline_hole)
-        self.AddHole(outline_w2, outline_w2, hole_size)
-        self.AddHole(needed_width - outline_w2, outline_w2, hole_size)
-        self.AddHole(outline_w2, needed_height - outline_w2, hole_size)
+        self.AddHole(outline_1w2, outline_1w2, hole_size)
+        self.AddHole(needed_width - outline_1w2, outline_1w2, hole_size)
+        self.AddHole(outline_1w2, needed_height - outline_1w2, hole_size)
+
+        # Add fiducials to the front
+        self.AddFiducial(outline_3w2, outline_1w2)
+        self.AddFiducial(needed_width - outline_1w2, outline_3w2)
+        self.AddFiducial(outline_1w2, needed_height - outline_3w2)
+        # Add fiducials to the back
+        self.AddFiducial(outline_1w2, outline_3w2, back=True)
+        self.AddFiducial(needed_width - outline_3w2, outline_1w2, back=True)
+        self.AddFiducial(outline_3w2, needed_height - outline_1w2, back=True)
 
         # Add boards
         for y in range(self.settings.boards_y):
@@ -188,6 +202,32 @@ class Panel:
         pad.SetAttribute(PAD_ATTRIB_HOLE_NOT_PLATED)
         # Move the pad to the requested position
         module.SetPosition(wxPoint(x, y))
+
+    def AddFiducial(self, x, y, back=False):
+        # Create a new footprint for the fiducial
+        fid = MODULE(self.board)
+        self.board.Add(fid)
+
+        # Determine the layers for the mask and copper
+        mask_layer = Layers.F_Mask if not back else Layers.B_Mask
+        copper_layer = Layers.F_Cu if not back else Layers.B_Cu
+
+        # Create the mask pad
+        mask_pad = D_PAD(fid)
+        fid.Add(mask_pad)
+        mask_pad.SetAttribute(PAD_ATTRIB_SMD)
+        mask_pad.SetSize(wxSize(self.settings.fiducial_mask, self.settings.fiducial_mask))
+        mask_pad.SetLayerSet(LSET(mask_layer))
+
+        # Create the copper pad
+        copper_pad = D_PAD(fid)
+        fid.Add(copper_pad)
+        copper_pad.SetAttribute(PAD_ATTRIB_SMD)
+        copper_pad.SetSize(wxSize(self.settings.fiducial_copper, self.settings.fiducial_copper))
+        copper_pad.SetLayerSet(LSET(copper_layer))
+
+        # Move the fiducial to the correct place
+        fid.SetPosition(wxPoint(x, y))
 
     def AppendBoard(self, other_board, board_x, board_y, outline_thickness):
         # Determine the bounding box of the board
