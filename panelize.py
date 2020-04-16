@@ -95,6 +95,7 @@ class Panel:
                         lx = board_x + (t+1) * x_spacing
                         ly = board_y - self.settings.spacing_width
 
+                        hits = []
                         # Open up both sides of the tab
                         for offset in [0, self.settings.spacing_width]:
                             hit_rect = EDA_RECT(
@@ -108,8 +109,17 @@ class Panel:
                                     drawing.GetLayer() == Layers.Edge_Cuts and
                                     drawing.HitTest(hit_rect, False, 10)
                                 ):
-                                    self.BreakOutline(drawing, hit_rect, 0)
+                                    hits.append((drawing, hit_rect))
                                     break
+
+                        # If the number of hits is not two, this tab is missing one or more of its
+                        # sides, therefore we should not add it
+                        if len(hits) != 2:
+                            continue
+
+                        # Break the outline for each of the hits
+                        for drawing, hit_rect in hits:
+                            self.BreakOutline(drawing, hit_rect, 0)
 
                         # Add the holes slightly inset
                         for hole_offset in [FromMM(0.1), self.settings.spacing_width - FromMM(0.1)]:
@@ -128,6 +138,7 @@ class Panel:
                         lx = board_x - self.settings.spacing_width
                         ly = board_y + (t+1) * y_spacing
 
+                        hits = []
                         # Open up both sides of the tab
                         for offset in [0, self.settings.spacing_width]:
                             hit_rect = EDA_RECT(
@@ -141,8 +152,17 @@ class Panel:
                                     drawing.GetLayer() == Layers.Edge_Cuts and
                                     drawing.HitTest(hit_rect, False, 10)
                                 ):
-                                    self.BreakOutline(drawing, hit_rect, 1)
+                                    hits.append((drawing, hit_rect))
                                     break
+
+                        # If the number of hits is not two, this tab is missing one or more of its
+                        # sides, therefore we should not add it
+                        if len(hits) != 2:
+                            continue
+
+                        # Break the outline for each of the hits
+                        for drawing, hit_rect in hits:
+                            self.BreakOutline(drawing, hit_rect, 1)
 
                         # Add the holes slightly inset
                         for hole_offset in [FromMM(0.1), self.settings.spacing_width - FromMM(0.1)]:
