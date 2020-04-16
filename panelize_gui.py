@@ -44,6 +44,10 @@ class PanelizePluginDialog(wx.Dialog):
         self.tabs_x = wx.SpinCtrl(panel, style=wx.SP_ARROW_KEYS, value='1')
         item_grid.Add(self.tabs_x, 1, wx.EXPAND)
 
+        item_grid.Add(wx.StaticText(panel, label='Tab mode'), 1, wx.ALIGN_CENTRE_VERTICAL)
+        self.tab_mode = wx.Choice(panel, choices=['Space evenly', 'Space around', 'Automatic'])
+        item_grid.Add(self.tab_mode, 1, wx.EXPAND)
+
         item_grid.Add(wx.StaticText(panel, label='Frame width (mm)'), 1, wx.ALIGN_CENTRE_VERTICAL)
         self.outline_width = wx.SpinCtrlDouble(panel, style=wx.SP_ARROW_KEYS, min=0.1, inc=0.1, value='5.0')
         self.outline_width.SetDigits(1)
@@ -117,6 +121,7 @@ class PanelizePluginDialog(wx.Dialog):
         settings.outline_hole = pcbnew.FromMM(self.outline_hole.GetValue())
         settings.spacing_width = pcbnew.FromMM(self.spacing_width.GetValue())
         settings.tab_width = pcbnew.FromMM(self.tab_width.GetValue())
+        settings.tab_mode = self.tab_mode.GetSelection()
         settings.trim_silkscreen = self.trim_silkscreen.IsChecked()
         settings.fiducial_mask = pcbnew.FromMM(self.fiducial_mask.GetValue())
         settings.fiducial_copper = pcbnew.FromMM(self.fiducial_copper.GetValue())

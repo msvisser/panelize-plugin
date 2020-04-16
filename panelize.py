@@ -2,6 +2,10 @@ from pcbnew import *
 from .constants import Layers, DrawSegmentShape
 
 class PanelSettings:
+    TABS_SPACE_EVENLY = 0
+    TABS_SPACE_AROUND = 1
+    TABS_SPACE_AUTO = 2
+
     def __init__(self, board_file):
         self.board_file = board_file
         self.outline_width = FromMM(5)
@@ -12,6 +16,7 @@ class PanelSettings:
         self.boards_y = 1
         self.tabs_x = 1
         self.tabs_y = 1
+        self.tab_mode = PanelSettings.TABS_SPACE_EVENLY
         self.trim_silkscreen = False
         self.fiducial_mask = FromMM(2.5)
         self.fiducial_copper = FromMM(1)
@@ -32,8 +37,9 @@ class Panel:
         for drawing in other_board.GetDrawings():
             if type(drawing) == DRAWSEGMENT and drawing.GetLayer() == Layers.Edge_Cuts:
                 outline_thickness = max(outline_thickness, drawing.GetWidth())
-        board_w = box.GetWidth() - outline_thickness
-        board_h = box.GetHeight() - outline_thickness
+        box.Inflate(-outline_thickness / 2, -outline_thickness / 2)
+        board_w = box.GetWidth()
+        board_h = box.GetHeight()
 
         # Update the number of copper layers if needed
         this_copper = self.board.GetCopperLayerCount()
@@ -78,21 +84,20 @@ class Panel:
             for x in range(self.settings.boards_x):
                 board_x = self.settings.outline_width + self.settings.spacing_width + (self.settings.spacing_width + board_w) * x
                 board_y = self.settings.outline_width + self.settings.spacing_width + (self.settings.spacing_width + board_h) * y
-                self.AppendBoard(other_board, board_x, board_y, outline_thickness)
+                self.AppendBoard(other_board, box, board_x, board_y, outline_thickness)
 
         hole_size = wxSize(FromMM(0.5), FromMM(0.5))
+        tab_ver_offsets, tab_hor_offsets = self.GetTabOffsets(other_board, box, outline_thickness)
         # Add the tabs for each of the boards
         for y in range(self.settings.boards_y+1):
             for x in range(self.settings.boards_x+1):
                 board_x = self.settings.outline_width + self.settings.spacing_width + (self.settings.spacing_width + board_w) * x
                 board_y = self.settings.outline_width + self.settings.spacing_width + (self.settings.spacing_width + board_h) * y
-                x_spacing = board_w / (self.settings.tabs_x + 1)
-                y_spacing = board_h / (self.settings.tabs_y + 1)
 
                 if x != self.settings.boards_x:
-                    for t in range(self.settings.tabs_x):
+                    for tab_offset in tab_ver_offsets:
                         # Calculate the position of the tab
-                        lx = board_x + (t+1) * x_spacing
+                        lx = board_x + tab_offset
                         ly = board_y - self.settings.spacing_width
 
                         hits = []
@@ -133,10 +138,10 @@ class Panel:
                         self.AddBoardOutline(hit_rect.GetRight(), ly, hit_rect.GetRight(), ly + self.settings.spacing_width, outline_thickness)
 
                 if y != self.settings.boards_y:
-                    for t in range(self.settings.tabs_y):
+                    for tab_offset in tab_hor_offsets:
                         # Calculate the position of the tab
                         lx = board_x - self.settings.spacing_width
-                        ly = board_y + (t+1) * y_spacing
+                        ly = board_y + tab_offset
 
                         hits = []
                         # Open up both sides of the tab
@@ -249,12 +254,9 @@ class Panel:
         # Move the fiducial to the correct place
         fid.SetPosition(wxPoint(x, y))
 
-    def AppendBoard(self, other_board, board_x, board_y, outline_thickness):
-        # Determine the bounding box of the board
-        box = other_board.GetBoardEdgesBoundingBox()
-        # Deflate the bounding box by half the outline thickness to account for
-        # the width of the outline
-        box.Inflate(-outline_thickness / 2, -outline_thickness / 2)
+    def AppendBoard(self, other_board, box, board_x, board_y, outline_thickness):
+        # Clone the bounding box to make sure the inflate does not change it
+        box = EDA_RECT(box.GetOrigin(), box.GetSize())
         # Get the origin of the bounding box
         origin_point = box.GetOrigin()
         # Determine the move offset needed to place the board at the correct position
@@ -310,3 +312,162 @@ class Panel:
         return (self.settings.trim_silkscreen and
                 (drawing.GetLayer() == Layers.F_SilkS or drawing.GetLayer() == Layers.B_SilkS) and
                 not drawing.HitTest(hitbox, True, 0))
+
+    def GetTabOffsets(self, other_board, box, outline_thickness):
+        # Offsets of the tabs
+        tab_ver_offsets = []
+        tab_hor_offsets = []
+        # Get the width and height of the board
+        board_w = box.GetWidth()
+        board_h = box.GetHeight()
+
+        if self.settings.tab_mode == PanelSettings.TABS_SPACE_EVENLY:
+            # Space the tabs evenly over the sides of the board
+            tab_ver_offsets.extend(self.SpaceItemsEvenly(0, board_w, self.settings.tabs_x))
+            tab_hor_offsets.extend(self.SpaceItemsEvenly(0, board_h, self.settings.tabs_y))
+        elif self.settings.tab_mode == PanelSettings.TABS_SPACE_AROUND:
+            # Space the tabs with equal space around them
+            tab_ver_offsets.extend(self.SpaceItemsAround(0, board_w, self.settings.tabs_x))
+            tab_hor_offsets.extend(self.SpaceItemsAround(0, board_h, self.settings.tabs_y))
+        elif self.settings.tab_mode == PanelSettings.TABS_SPACE_AUTO:
+            # Find the ranges of the board edges which follow the bounding box
+            overlap_ver, overlap_hor = self.FindBoardEdgeRanges(other_board, box)
+
+            # Distribute the vertical tabs based on the ranges
+            tabs_ver_dist = self.ScoreDistributeTabs(overlap_ver, self.settings.tabs_x)
+            for i, count in enumerate(tabs_ver_dist):
+                if count > 0:
+                    tab_ver_offsets.extend(self.SpaceItemsAround(overlap_ver[i][0], overlap_ver[i][1], count))
+            # Distribute the horizontal tabs based on the ranges
+            tabs_hor_dist = self.ScoreDistributeTabs(overlap_hor, self.settings.tabs_y)
+            for i, count in enumerate(tabs_hor_dist):
+                if count > 0:
+                    tab_hor_offsets.extend(self.SpaceItemsAround(overlap_hor[i][0], overlap_hor[i][1], count))
+
+        return (tab_ver_offsets, tab_hor_offsets)
+
+    def SpaceItemsAround(self, low, high, count):
+        # Space the items with equal space around each item
+        result = []
+        spacing = (high - low) / (count * 2)
+        for t in range(count):
+            result.append(low + (t*2+1) * spacing)
+        return result
+
+    def SpaceItemsEvenly(self, low, high, count):
+        # Space the items with equal distance between them
+        result = []
+        spacing = (high - low) / (count + 1)
+        for t in range(count):
+            result.append(low + (t+1) * spacing)
+        return result
+
+    def FindBoardEdgeRanges(self, other_board, box):
+        # Get the origin of the board
+        origin_point = box.GetOrigin()
+        # Get the width and heigth of the board
+        board_w = box.GetWidth()
+        board_h = box.GetHeight()
+
+        # Hit rectangle to match the top edge
+        rect_top = EDA_RECT(origin_point, wxSize(board_w, 0))
+        rect_top.Inflate(0, 10)
+        # Hit rectangle to match the left edge
+        rect_left = EDA_RECT(origin_point, wxSize(0, board_h))
+        rect_left.Inflate(10, 0)
+        # Hit rectangle to match the bottom edge
+        rect_bottom = EDA_RECT(origin_point + wxPoint(0, board_h), wxSize(board_w, 0))
+        rect_bottom.Inflate(0, 10)
+        # Hit rectangle to match the right edge
+        rect_rigth = EDA_RECT(origin_point + wxPoint(board_w, 0), wxSize(0, board_h))
+        rect_rigth.Inflate(10, 0)
+        # List for all the hits of each edge
+        hits_top = []
+        hits_left = []
+        hits_bottom = []
+        hits_right = []
+
+        # Check each drawing in the board
+        for drawing in other_board.GetDrawings():
+            # Make sure the drawing is a line segment and is on the Edge_Cuts layer
+            if type(drawing) == DRAWSEGMENT and drawing.GetShape() == DrawSegmentShape.Segment and drawing.GetLayer() == Layers.Edge_Cuts:
+                start = drawing.GetStart() - origin_point
+                end = drawing.GetEnd() - origin_point
+                # Check if this drawing hits any of the edges
+                if drawing.HitTest(rect_top, True, 0):
+                    hits_top.append((start[0], end[0]) if start[0] < end[0] else (end[0], start[0]))
+                elif drawing.HitTest(rect_left, True, 0):
+                    hits_left.append((start[1], end[1]) if start[1] < end[1] else (end[1], start[1]))
+                elif drawing.HitTest(rect_bottom, True, 0):
+                    hits_bottom.append((start[0], end[0]) if start[0] < end[0] else (end[0], start[0]))
+                elif drawing.HitTest(rect_rigth, True, 0):
+                    hits_right.append((start[1], end[1]) if start[1] < end[1] else (end[1], start[1]))
+
+        # Sort all the ranges that were found
+        hits_top.sort()
+        hits_left.sort()
+        hits_bottom.sort()
+        hits_right.sort()
+
+        # Filter out any range that is smaller than a single tab
+        f = lambda i: i[1]-i[0] > self.settings.tab_width
+        overlap_ver = filter(f, self.FindOverlappingRanges(hits_top, hits_bottom))
+        overlap_hor = filter(f, self.FindOverlappingRanges(hits_left, hits_right))
+        # Return the ranges that were found
+        return (overlap_ver, overlap_hor)
+
+    def FindOverlappingRanges(self, a, b):
+        from collections import deque
+        # Put the ranges is a queue
+        aq, bq = deque(a), deque(b)
+        results = []
+        # While there is an item is both of the queues
+        while len(aq) and len(bq):
+            # Take the first item of the queues
+            ia = aq.popleft()
+            ib = bq.popleft()
+
+            # Determine the overlapping range
+            mx = max(ia[0], ib[0])
+            mn = min(ia[1], ib[1])
+            diff = mx-mn
+
+            if diff > 0:
+                # If there is no overlap, return the range with the highest end
+                if ib[1] < ia[1]:
+                    aq.appendleft(ia)
+                else:
+                    bq.appendleft(ib)
+            else:
+                # If there is overlap, insert the overlap into the results
+                results.append((mx, mn))
+                # Return a partial range to the queue if it is not consumed
+                if mn < ia[1]:
+                    aq.appendleft((mn+1, ia[1]))
+                if mn < ib[1]:
+                    bq.appendleft((mn+1, ib[1]))
+
+        # Return the overlapping ranges
+        return results
+
+    def ScoreDistributeTabs(self, ranges, count):
+        # Set the initial scores to the width of the range
+        score_orig = [b - a for a, b in ranges]
+        score = score_orig[:]
+        # Set the number of tabs for each range to zero
+        tabs = [0 for _ in ranges]
+
+        # Distribute the tabs
+        for _ in range(count):
+            # Find the range with the highest score
+            hs, hs_idx = 0, 0
+            for i, s in enumerate(score):
+                if s > hs:
+                    hs, hs_idx = s, i
+            # Assign a tab to the range
+            tabs[hs_idx] += 1
+            # Update the score of the range based on the number of tabs
+            score[hs_idx] = (score_orig[hs_idx] - tabs[hs_idx] * self.settings.tab_width) / (tabs[hs_idx] + 1)
+
+        # Return the number of tabs for each range
+        return tabs
