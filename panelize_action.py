@@ -1,6 +1,8 @@
 import pcbnew
 import os
 import wx
+from wx.core import DateTime, LogDebug, LogInfo
+
 from .panelize import Panel, PanelSettings
 from .panelize_gui import PanelizePluginDialog
 
@@ -24,12 +26,23 @@ class PanelizePlugin(pcbnew.ActionPlugin):
             )
             dlg.ShowModal()
             dlg.Destroy()
+
             return
 
         # Ask the user for the board and settings
         panelize_dialog = PanelizePluginDialog()
-        panelize_dialog.LoadSettings(self.settings_history)
+        panelize_dialog.LoadSettings(self.settings_history)        
+
+		# Uncomment for debugging
+        # wx.Log.SetLogLevel(6)
+        # self.log_window = wx.LogWindow(None, 'Log Window', True)
+
+        # Do not show window for faster debugging
+        # ok = panelize_dialog.Show()
         ok = panelize_dialog.ShowModal()
+        
+        LogDebug("Plugin started..")
+
         if not ok:
             panelize_dialog.Destroy()
             return

@@ -2,10 +2,12 @@ import pcbnew
 import wx
 import os
 from .panelize import PanelSettings
+from pcbnew import ActionPlugin, GetBoard
 
 class PanelizePluginDialog(wx.Dialog):
     def __init__(self, parent=None):
-        wx.Dialog.__init__(self, parent, title='Create panelized board')
+        # wx.Dialog.__init__(self, parent, title='Create panelized board')
+        wx.Dialog.__init__ ( self, parent, id = wx.ID_ANY, title = u"Create panelized board", pos = wx.DefaultPosition, size = wx.Size( 380,460 ), style = wx.CAPTION|wx.CLOSE_BOX|wx.DEFAULT_DIALOG_STYLE|wx.RESIZE_BORDER )
         self.Bind(wx.EVT_CLOSE, self.OnCancel, id=self.GetId())
 
         # Create a panel
@@ -56,6 +58,7 @@ class PanelizePluginDialog(wx.Dialog):
         item_grid.Add(wx.StaticText(panel, label='Frame hole (mm)', size=wx.Size(120, -1)), 1, wx.ALIGN_CENTRE_VERTICAL)
         self.outline_hole = wx.SpinCtrlDouble(panel, style=wx.SP_ARROW_KEYS, min=0.1, inc=0.1, value='2.5')
         self.outline_hole.SetDigits(1)
+        self.outline_hole.Enabled = False
         item_grid.Add(self.outline_hole, 1, wx.EXPAND)
 
         item_grid.Add(wx.StaticText(panel, label='Board spacing (mm)'), 1, wx.ALIGN_CENTRE_VERTICAL)
@@ -75,11 +78,13 @@ class PanelizePluginDialog(wx.Dialog):
         item_grid.Add(wx.StaticText(panel, label='Fiducial mask (mm)', size=wx.Size(140, -1)), 1, wx.ALIGN_CENTRE_VERTICAL)
         self.fiducial_mask = wx.SpinCtrlDouble(panel, style=wx.SP_ARROW_KEYS, min=0.1, inc=0.1, value='2.5')
         self.fiducial_mask.SetDigits(1)
+        self.fiducial_mask.Enabled = False
         item_grid.Add(self.fiducial_mask, 1, wx.EXPAND)
 
         item_grid.Add(wx.StaticText(panel, label='Fiducial copper (mm)'), 1, wx.ALIGN_CENTRE_VERTICAL)
         self.fiducial_copper = wx.SpinCtrlDouble(panel, style=wx.SP_ARROW_KEYS, min=0.1, inc=0.1, value='1.0')
         self.fiducial_copper.SetDigits(1)
+        self.fiducial_copper.Enabled = False
         item_grid.Add(self.fiducial_copper, 1, wx.EXPAND)
 
         # Create two buttons
@@ -144,3 +149,5 @@ class PanelizePluginDialog(wx.Dialog):
         self.trim_silkscreen.SetValue(settings.trim_silkscreen)
         self.fiducial_mask.SetValue(pcbnew.ToMM(settings.fiducial_mask))
         self.fiducial_copper.SetValue(pcbnew.ToMM(settings.fiducial_copper))
+
+        # self.file_name.SetValue("D:\Temp\Src.kicad_pcb")

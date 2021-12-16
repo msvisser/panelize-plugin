@@ -1,5 +1,10 @@
+from sys import _debugmallocstats
 from pcbnew import *
+from wx.core import LogDebug, LogWarning, LogError
 from .constants import Layers, DrawSegmentShape
+import wx
+import pcbnew
+import sys
 
 class PanelSettings:
     TABS_SPACE_EVENLY = 0
@@ -31,15 +36,40 @@ class Panel:
         # Load the board to be panelized
         other_board = LoadBoard(self.settings.board_file)
 
-        # Get the thickness of the outline
         box = other_board.GetBoardEdgesBoundingBox()
-        outline_thickness = 0
+        outline_thickness = 2
+
+        # Always use equal width shapes on edge cuts layer, this is needed to calculate correct milling path at fabhouse
+        # TODO: Check outline widths, abort and warn user if all shapes not equal width
         for drawing in other_board.GetDrawings():
-            if type(drawing) == DRAWSEGMENT and drawing.GetLayer() == Layers.Edge_Cuts:
-                outline_thickness = max(outline_thickness, drawing.GetWidth())
-        box.Inflate(-outline_thickness / 2, -outline_thickness / 2)
+             if type(drawing) == PCB_SHAPE and drawing.GetLayer() == Layers.Edge_Cuts:
+                 outline_thickness = max(outline_thickness, drawing.GetWidth())
+
+        # Check and correct unresolved variables
+        project = other_board.GetProject()
+        for drawing in other_board.GetDrawings():
+            if (drawing.GetClass() == "PTEXT" and drawing.IsVisible() ):
+                if( drawing.HasTextVars()):
+                    unresolvedText = drawing.GetText()
+                    # if(project == None):
+                    #     LogWarning("Warning: Text variables are used in source board. Text \"" + unresolvedText + "\", but project file is not found. Please review texts on the board")  
+                    # else:
+                    resolvedTxt = pcbnew.ExpandTextVars(unresolvedText, project)
+                    if(unresolvedText == resolvedTxt):
+                        LogError("Unresolved text variable found: \"" + unresolvedText + "\". Maybe project file is not in the same dir? \r\nPlease review texts on the board.")  
+                    else:
+                        drawing.SetText(resolvedTxt)
+                        LogWarning("Unresolved text variable found \"" + unresolvedText + "\" and replaced by \"" + resolvedTxt +"\". \r\nPlease review texts on the board.")  
+                    
+        half_thickness = outline_thickness / 2
+        LogDebug("Max outline_thickness = " + repr(outline_thickness) + ", half_thickness = " + repr(half_thickness))
+        
+        # bbox must only contain route path information, disregard graphical line width (for v6 at least)
+        box.Inflate(-int(half_thickness), -int(half_thickness))
         board_w = box.GetWidth()
         board_h = box.GetHeight()
+
+        LogDebug("BBOX W=" + repr(board_w) + ", H="+repr(board_h))
 
         # Update the number of copper layers if needed
         this_copper = self.board.GetCopperLayerCount()
@@ -64,20 +94,21 @@ class Panel:
         outline_1w2 = self.settings.outline_width / 2
         outline_3w2 = self.settings.outline_width * 3 / 2
 
-        # Add holes in the frame of the panel
-        hole_size = wxSize(self.settings.outline_hole, self.settings.outline_hole)
-        self.AddHole(outline_1w2, outline_1w2, hole_size)
-        self.AddHole(needed_width - outline_1w2, outline_1w2, hole_size)
-        self.AddHole(outline_1w2, needed_height - outline_1w2, hole_size)
+		# Not used by me
+        # # Add holes in the frame of the panel
+        # hole_size = wxSize(self.settings.outline_hole, self.settings.outline_hole)
+        # self.AddHole(outline_1w2, outline_1w2, hole_size)
+        # self.AddHole(needed_width - outline_1w2, outline_1w2, hole_size)
+        # self.AddHole(outline_1w2, needed_height - outline_1w2, hole_size)
 
-        # Add fiducials to the front
-        self.AddFiducial(outline_3w2, outline_1w2)
-        self.AddFiducial(needed_width - outline_1w2, outline_3w2)
-        self.AddFiducial(outline_1w2, needed_height - outline_3w2)
-        # Add fiducials to the back
-        self.AddFiducial(outline_1w2, outline_3w2, back=True)
-        self.AddFiducial(needed_width - outline_3w2, outline_1w2, back=True)
-        self.AddFiducial(outline_3w2, needed_height - outline_1w2, back=True)
+        # # Add fiducials to the front
+        # self.AddFiducial(outline_3w2, outline_1w2)
+        # self.AddFiducial(needed_width - outline_1w2, outline_3w2)
+        # self.AddFiducial(outline_1w2, needed_height - outline_3w2)
+        # # Add fiducials to the back
+        # self.AddFiducial(outline_1w2, outline_3w2, back=True)
+        # self.AddFiducial(needed_width - outline_3w2, outline_1w2, back=True)
+        # self.AddFiducial(outline_3w2, needed_height - outline_1w2, back=True)
 
         # Add boards
         for y in range(self.settings.boards_y):
@@ -85,9 +116,20 @@ class Panel:
                 board_x = self.settings.outline_width + self.settings.spacing_width + (self.settings.spacing_width + board_w) * x
                 board_y = self.settings.outline_width + self.settings.spacing_width + (self.settings.spacing_width + board_h) * y
                 self.AppendBoard(other_board, box, board_x, board_y, outline_thickness)
+        
+        # Replace edge rectangles with lines
+        for drawing in self.board.GetDrawings():
+            if (drawing.GetLayer() == Layers.Edge_Cuts and 
+             type(drawing) == PCB_SHAPE and
+             drawing.GetShape() == DrawSegmentShape.Rect
+             ):
+                self.rect2lines(drawing, outline_thickness)
+                LogDebug("Rectangle on edge layer replaced with lines")
 
         hole_size = wxSize(FromMM(0.5), FromMM(0.5))
         tab_ver_offsets, tab_hor_offsets = self.GetTabOffsets(other_board, box, outline_thickness)
+        # self.AddHole(tab_hor_offsets[0], tab_ver_offsets[0], hole_size)
+
         # Add the tabs for each of the boards
         for y in range(self.settings.boards_y+1):
             for x in range(self.settings.boards_x+1):
@@ -109,9 +151,10 @@ class Panel:
                             )
                             # Check all drawing items for outline segments that need to be opened up
                             for drawing in self.board.GetDrawings():
-                                if (type(drawing) == DRAWSEGMENT and
-                                    drawing.GetShape() == DrawSegmentShape.Segment and
+                                if (type(drawing) == PCB_SHAPE and
                                     drawing.GetLayer() == Layers.Edge_Cuts and
+                                    # Do not check for rectangles here, because all rectangles are replaced by lines after listing all boards
+                                    drawing.GetShape() == DrawSegmentShape.Segment and                               
                                     drawing.HitTest(hit_rect, False, 10)
                                 ):
                                     hits.append((drawing, hit_rect))
@@ -124,7 +167,7 @@ class Panel:
 
                         # Break the outline for each of the hits
                         for drawing, hit_rect in hits:
-                            self.BreakOutline(drawing, hit_rect, 0)
+                           self.BreakOutline(drawing, hit_rect, 0)
 
                         # Add the holes slightly inset
                         for hole_offset in [FromMM(0.1), self.settings.spacing_width - FromMM(0.1)]:
@@ -133,7 +176,7 @@ class Panel:
                                 self.AddHole(lx - FromMM(i), ly + hole_offset, hole_size)
                                 self.AddHole(lx + FromMM(i), ly + hole_offset, hole_size)
 
-                        # Add in the connecting lines
+                        # Add in the connecting lines                        
                         self.AddBoardOutline(hit_rect.GetLeft(), ly, hit_rect.GetLeft(), ly + self.settings.spacing_width, outline_thickness)
                         self.AddBoardOutline(hit_rect.GetRight(), ly, hit_rect.GetRight(), ly + self.settings.spacing_width, outline_thickness)
 
@@ -142,6 +185,8 @@ class Panel:
                         # Calculate the position of the tab
                         lx = board_x - self.settings.spacing_width
                         ly = board_y + tab_offset
+
+                        # self.AddHole(board_x, board_y, hole_size)
 
                         hits = []
                         # Open up both sides of the tab
@@ -152,9 +197,10 @@ class Panel:
                             )
                             # Check all drawing items for outline segments that need to be opened up
                             for drawing in self.board.GetDrawings():
-                                if (type(drawing) == DRAWSEGMENT and
-                                    drawing.GetShape() == DrawSegmentShape.Segment and
+                                if (type(drawing) == PCB_SHAPE and
                                     drawing.GetLayer() == Layers.Edge_Cuts and
+                                    # Do not check for rectangles here, because all rectangles are replaced by lines after listing all boards
+                                    drawing.GetShape() == DrawSegmentShape.Segment and
                                     drawing.HitTest(hit_rect, False, 10)
                                 ):
                                     hits.append((drawing, hit_rect))
@@ -167,7 +213,7 @@ class Panel:
 
                         # Break the outline for each of the hits
                         for drawing, hit_rect in hits:
-                            self.BreakOutline(drawing, hit_rect, 1)
+                          self.BreakOutline(drawing, hit_rect, 1)
 
                         # Add the holes slightly inset
                         for hole_offset in [FromMM(0.1), self.settings.spacing_width - FromMM(0.1)]:
@@ -180,10 +226,20 @@ class Panel:
                         self.AddBoardOutline(lx, hit_rect.GetTop(), lx + self.settings.spacing_width, hit_rect.GetTop(), outline_thickness)
                         self.AddBoardOutline(lx, hit_rect.GetBottom(), lx + self.settings.spacing_width, hit_rect.GetBottom(), outline_thickness)
 
-        self.board.Move(self.page_offset)
+        self.board.Move(self.page_offset)        
+        wx.LogDebug("Finished")
+    
+    def rect2lines(self, drawing, width=FromMM(0.25)):
+        start = drawing.GetStart()
+        end = drawing.GetEnd()
+        # LogDebug("Start " + repr(start) + ", End " + repr(end))
+        # self.AddBoardOutline(start[0], start[1], end[0], end[1])
+        self.AddBoardOutlineSquare(start[0], start[1], end[0]-start[0] , end[1]-start[1], width)
+        # TODO: It would be better to move original rect to other layer, but now just delete it
+        self.board.Delete(drawing)
 
     def AddBoardOutline(self, x0, y0, x1, y1, width=FromMM(0.25)):
-        line = DRAWSEGMENT(self.board)
+        line = PCB_SHAPE(self.board)
         line.SetWidth(width)
         line.SetStart(wxPoint(x0, y0))
         line.SetEnd(wxPoint(x1, y1))
@@ -215,22 +271,22 @@ class Panel:
 
     def AddHole(self, x, y, size):
         # Create a new footprint
-        module = MODULE(self.board)
+        module = FOOTPRINT(self.board)
         self.board.Add(module)
         # Create a new pad
-        pad = D_PAD(module)
+        pad = PAD(module)
         module.Add(pad)
         # Set the size of the pad
         pad.SetSize(size)
         pad.SetDrillSize(size)
         # Set the pad to non-plated through hole
-        pad.SetAttribute(PAD_ATTRIB_HOLE_NOT_PLATED)
+        pad.SetAttribute(PAD_ATTRIB_NPTH)
         # Move the pad to the requested position
         module.SetPosition(wxPoint(x, y))
 
     def AddFiducial(self, x, y, back=False):
         # Create a new footprint for the fiducial
-        fid = MODULE(self.board)
+        fid = FOOTPRINT(self.board)
         self.board.Add(fid)
 
         # Determine the layers for the mask and copper
@@ -238,14 +294,14 @@ class Panel:
         copper_layer = Layers.F_Cu if not back else Layers.B_Cu
 
         # Create the mask pad
-        mask_pad = D_PAD(fid)
+        mask_pad = PAD(fid)
         fid.Add(mask_pad)
         mask_pad.SetAttribute(PAD_ATTRIB_SMD)
         mask_pad.SetSize(wxSize(self.settings.fiducial_mask, self.settings.fiducial_mask))
         mask_pad.SetLayerSet(LSET(mask_layer))
 
         # Create the copper pad
-        copper_pad = D_PAD(fid)
+        copper_pad = PAD(fid)
         fid.Add(copper_pad)
         copper_pad.SetAttribute(PAD_ATTRIB_SMD)
         copper_pad.SetSize(wxSize(self.settings.fiducial_copper, self.settings.fiducial_copper))
@@ -263,21 +319,23 @@ class Panel:
         offset_point = wxPoint(board_x, board_y) - origin_point
 
         # Inflate the bounding box again for the silkscreen trim check
-        box.Inflate(self.settings.spacing_width / 2, self.settings.spacing_width / 2)
-
+        # box.Inflate(self.settings.spacing_width / 2, self.settings.spacing_width / 2)#################################################################################
+        box.Inflate( 50,50)
         # Duplicate all the tracks
         for track in other_board.GetTracks():
             new_track = track.Duplicate()
             self.board.Add(new_track)
             new_track.Move(offset_point)
         # Duplicate all footprints
-        for module in other_board.GetModules():
-            module_dup = BOARD_ITEM.Duplicate(module)
+        for module in other_board.GetFootprints():
+            # module_dup = BOARD_ITEM.Duplicate(module)
+            module_dup = module.Duplicate()
             self.board.Add(module_dup)
 
             # Go through all graphical items and possibly remove silkscreen
             marked_for_deletion = []
-            for drawing in module_dup.GraphicalItems():
+            # for drawing in module_dup.GraphicalItems():
+            for drawing in module.GraphicalItems():
                 if self.TrimSilkscreenTest(drawing, box):
                     marked_for_deletion.append(drawing)
             for item in marked_for_deletion:
@@ -343,7 +401,6 @@ class Panel:
             for i, count in enumerate(tabs_hor_dist):
                 if count > 0:
                     tab_hor_offsets.extend(self.SpaceItemsAround(overlap_hor[i][0], overlap_hor[i][1], count))
-
         return (tab_ver_offsets, tab_hor_offsets)
 
     def SpaceItemsAround(self, low, high, count):
@@ -390,7 +447,7 @@ class Panel:
         # Check each drawing in the board
         for drawing in other_board.GetDrawings():
             # Make sure the drawing is a line segment and is on the Edge_Cuts layer
-            if type(drawing) == DRAWSEGMENT and drawing.GetShape() == DrawSegmentShape.Segment and drawing.GetLayer() == Layers.Edge_Cuts:
+            if type(drawing) == PCB_SHAPE and drawing.GetShape() == DrawSegmentShape.Segment and drawing.GetLayer() == Layers.Edge_Cuts:
                 start = drawing.GetStart() - origin_point
                 end = drawing.GetEnd() - origin_point
                 # Check if this drawing hits any of the edges
